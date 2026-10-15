@@ -1,6 +1,6 @@
-import './admin.css';
 'use client';
 
+import './admin.css';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
