@@ -1,0 +1,328 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+  BLOGGER
+  SUPPORT
+  USER
+}
+
+enum PublishStatus {
+  DRAFT
+  REVIEW
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum SubscriptionStatus {
+  INCOMPLETE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+model User {
+  id                 String       @id @default(cuid())
+  name               String?
+  email              String?      @unique
+  emailVerified      DateTime?
+  image              String?
+  passwordHash       String?
+  role               UserRole     @default(USER)
+  isActive           Boolean      @default(true)
+  twoFactorEnabled   Boolean      @default(false)
+  twoFactorSecret    String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  accounts           Account[]
+  sessions           Session[]
+  posts              BlogPost[]   @relation("PostAuthor")
+  activityLogs       ActivityLog[]
+  apiKeys            ApiKey[]
+  usageEvents        UsageEvent[]
+  subscriptions      Subscription[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([sessionToken])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  @@unique([identifier, token])
+}
+
+model SiteSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  group     String   @default("general")
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ToolConfig {
+  id            String   @id @default(cuid())
+  toolId        String   @unique
+  enabled       Boolean  @default(false)
+  name          String
+  description   String   @db.Text
+  icon          String?
+  category      String
+  seoTitle      String?
+  seoDescription String? @db.Text
+  keywords      String[] @default([])
+  maxFileSizeMb Int      @default(25)
+  allowedFormats String[] @default([])
+  config        Json     @default("{}")
+  sortOrder     Int      @default(0)
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+  @@index([category, sortOrder])
+  @@index([enabled])
+}
+
+model ThemeTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  config      Json
+  isDefault   Boolean  @default(false)
+  version     Int      @default(1)
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([isDefault])
+}
+
+model ContentPage {
+  id              String        @id @default(cuid())
+  slug            String        @unique
+  title           String
+  content         Json
+  excerpt         String?       @db.Text
+  status          PublishStatus @default(DRAFT)
+  seoTitle        String?
+  seoDescription  String?       @db.Text
+  canonicalUrl    String?
+  schemaJson      Json?
+  ogImage         String?
+  publishedAt     DateTime?
+  createdBy       String?
+  updatedBy       String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  @@index([status, publishedAt])
+}
+
+model BlogPost {
+  id             String        @id @default(cuid())
+  slug           String        @unique
+  title          String
+  excerpt        String?       @db.Text
+  content        Json
+  featuredImage  String?
+  status         PublishStatus @default(DRAFT)
+  seoTitle       String?
+  seoDescription String?       @db.Text
+  tags           String[]      @default([])
+  category       String?
+  scheduledAt    DateTime?
+  publishedAt    DateTime?
+  authorId       String
+  author         User          @relation("PostAuthor", fields: [authorId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  @@index([status, publishedAt])
+  @@index([category])
+}
+
+model Menu {
+  id        String     @id @default(cuid())
+  name      String
+  location  String
+  items     MenuItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  @@unique([name, location])
+}
+
+model MenuItem {
+  id        String    @id @default(cuid())
+  menuId    String
+  label     String
+  href      String
+  sortOrder Int       @default(0)
+  parentId  String?
+  menu      Menu      @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  @@index([menuId, sortOrder])
+}
+
+model MediaAsset {
+  id           String   @id @default(cuid())
+  originalName String
+  storageKey   String   @unique
+  mimeType     String
+  sizeBytes    BigInt
+  width        Int?
+  height       Int?
+  altText      String?
+  provider     String   @default("local")
+  uploadedBy   String?
+  createdAt    DateTime @default(now())
+  @@index([mimeType, createdAt])
+}
+
+model SubscriptionPlan {
+  id             String   @id @default(cuid())
+  name           String
+  slug           String   @unique
+  description    String?  @db.Text
+  priceCents     Int      @default(0)
+  currency       String   @default("USD")
+  interval       String   @default("month")
+  features       Json
+  limits         Json
+  isActive       Boolean  @default(false)
+  provider       String?
+  providerPlanId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id                     String             @id @default(cuid())
+  userId                 String
+  planId                 String
+  status                 SubscriptionStatus @default(INCOMPLETE)
+  provider               String?
+  providerCustomerId     String?
+  providerSubscriptionId String?            @unique
+  currentPeriodEnd       DateTime?
+  cancelAtPeriodEnd      Boolean            @default(false)
+  user                   User               @relation(fields: [userId], references: [id])
+  plan                   SubscriptionPlan   @relation(fields: [planId], references: [id])
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  @@index([userId, status])
+}
+
+model Coupon {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  discountPercent Int?
+  discountCents   Int?
+  currency        String   @default("USD")
+  maxRedemptions  Int?
+  redemptionCount Int      @default(0)
+  startsAt        DateTime?
+  expiresAt       DateTime?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+}
+
+model UsageEvent {
+  id          String   @id @default(cuid())
+  userId      String?
+  toolId      String
+  ipHash      String?
+  sessionHash String?
+  units       Int      @default(1)
+  status      String   @default("success")
+  metadata    Json     @default("{}")
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  @@index([toolId, createdAt])
+  @@index([userId, createdAt])
+  @@index([ipHash, createdAt])
+}
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorEmail String?
+  action     String
+  entityType String?
+  entityId   String?
+  ipHash     String?
+  metadata   Json     @default("{}")
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String
+  prefix      String
+  keyHash     String    @unique
+  scopes      String[]  @default([])
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  @@index([userId, revokedAt])
+}
+
+model BackupSnapshot {
+  id          String   @id @default(cuid())
+  label       String
+  storageKey  String?
+  checksum    String?
+  sizeBytes   BigInt?
+  status      String   @default("pending")
+  createdBy   String?
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+}
+
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  description String?  @db.Text
+  enabled     Boolean  @default(false)
+  rollout     Int      @default(100)
+  rules       Json     @default("{}")
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}

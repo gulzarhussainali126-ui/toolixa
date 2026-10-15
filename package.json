@@ -1,0 +1,46 @@
+{
+  "name": "toolixa",
+  "version": "3.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "node tests/smoke.cjs",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:dev": "prisma migrate dev",
+    "admin:hash": "node scripts/hash-admin-password.cjs",
+    "db:status": "prisma migrate status"
+  },
+  "dependencies": {
+    "next": "^15.5.27",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "framer-motion": "^11.18.2",
+    "lucide-react": "^0.468.0",
+    "jszip": "^3.10.1",
+    "pdf-lib": "^1.17.1",
+    "qrcode": "^1.5.4",
+    "@prisma/client": "^6.19.0",
+    "next-auth": "^4.24.11",
+    "@next-auth/prisma-adapter": "^1.0.7",
+    "bcryptjs": "^2.4.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "@types/react": "^19.2.7",
+    "@types/node": "^22.10.5",
+    "@types/react-dom": "^19.2.3",
+    "@types/qrcode": "^1.5.5",
+    "tailwindcss": "^3.4.17",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "prisma": "^6.19.0"
+  }
+}
