@@ -22,7 +22,7 @@ export async function PUT(request: Request) {
   try {
     const commandCenter = payload.settings.commandCenter as any;
     const sessionUser = gate.session?.user as any;
-    const writes = Object.entries(payload.settings).map(([key, value]) => prisma.siteSetting.upsert({ where: { key }, create: { key, value: value as any, group: 'admin' }, update: { value: value as any, group: 'admin' } }));
+    const writes: any[] = Object.entries(payload.settings).map(([key, value]) => prisma.siteSetting.upsert({ where: { key }, create: { key, value: value as any, group: 'admin' }, update: { value: value as any, group: 'admin' } }));
     writes.push(prisma.activityLog.create({ data: { actorId: typeof sessionUser?.id === 'string' && sessionUser.id !== 'env-super-admin' ? sessionUser.id : undefined, actorEmail: typeof sessionUser?.email === 'string' ? sessionUser.email.slice(0, 254) : undefined, action: 'admin.settings.saved', entityType: 'SiteSetting', entityId: 'commandCenter', metadata: { keys: Object.keys(payload.settings).slice(0, 100), toolOverrideCount: commandCenter?.toolOverrides && typeof commandCenter.toolOverrides === 'object' ? Object.keys(commandCenter.toolOverrides).length : 0 } } }));
     await prisma.$transaction(writes as any);
     return NextResponse.json({ ok: true, saved: Object.keys(payload.settings).length, auditLogged: true }, { headers: { 'Cache-Control': 'no-store' } });
